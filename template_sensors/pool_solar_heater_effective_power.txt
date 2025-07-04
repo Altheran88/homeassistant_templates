@@ -1,0 +1,47 @@
+{% set panel_pi2 = 80 %}
+{% set panel_emissivity = 0.9 %}
+{% set panel_tilt = 23.73 %}
+{% set panel_azimuth = 352 %}
+
+{% set sigma = 0.0000000567 %}
+{% set panel_m2 = panel_pi2 / 10.764 %}
+
+{% set sun_elevation = states('sensor.sun_solar_elevation')|float %}
+{% set sun_azimuth   = states('sensor.sun_solar_azimuth')|float %}
+{% set solar_irradiance = states('sensor.gw1100b_solar_radiation')|float %}
+
+{% set Tpanel = (states('sensor.pool_temp_in_temperature')|float + states('sensor.pool_temp_out_temperature')|float) / 2 %}
+{% set Tair = states('sensor.gw1100b_outdoor_temperature')|float %}
+{% set Kpanel = Tpanel + 273.15 %}
+{% set Kair = Tair + 273.15 %}
+
+{% set h_conv = 5.7 + 3.8 * (states('sensor.gw1100b_wind_speed')|float / 3.6 ) %}
+{% set h_rad = ( 4 * panel_emissivity * sigma ) * ((( Kpanel + Kair ) / 2 ) ** 3) %}
+{% set h_total = h_conv + h_rad %}
+
+{% set sun_elev_rad = sun_elevation * ( pi / 180 ) %}
+{% set sun_azim_rad = sun_azimuth * ( pi / 180 ) %}
+{% set panel_tilt_rad = panel_tilt * ( pi / 180 ) %}
+{% set panel_azim_rad = panel_azimuth * ( pi / 180 ) %}
+
+{% set sun_x = sin( sun_azim_rad ) * cos( sun_elev_rad ) %}
+{% set sun_y = cos( sun_azim_rad ) * cos( sun_elev_rad ) %}
+{% set sun_z = sin( sun_elev_rad ) %}
+
+{% set normal_x = sin(panel_azim_rad) * sin(panel_tilt_rad) %}
+{% set normal_y = cos(panel_azim_rad) * sin(panel_tilt_rad) %}
+{% set normal_z = cos(panel_tilt_rad) %}
+
+{% set dot_product = sun_x * normal_x + sun_y * normal_y + sun_z * normal_z %}
+
+{% set incidence_angle_rad = acos( dot_product ) %}
+
+{% set incidence_efficiency_factor = max( 0 , cos( incidence_angle_rad )) %}
+{% set effective_irradiance = solar_irradiance * incidence_efficiency_factor %}
+{% set solar_gain = effective_irradiance * panel_m2 %}
+
+{% set temp_diff_env = Tpanel - Tair %}
+{% set heat_loss_env = h_total * panel_m2 * temp_diff_env %}
+{% set net_heat_available = solar_gain - heat_loss_env %}
+
+{{ net_heat_available }}
