@@ -1,0 +1,9 @@
+{% if is_state('light.filtreur_piscine_on_off', 'on') %}
+{{
+(states('sensor.pool_temp_out_temperature') | float
+- 
+states('sensor.pool_temp_in_temperature') | float) | round(2)
+}}
+{% else %}
+{{ '0' }}
+{% endif %}
